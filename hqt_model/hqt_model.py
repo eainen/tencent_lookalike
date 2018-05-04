@@ -9,6 +9,12 @@ from sklearn.linear_model import LogisticRegression,SGDClassifier
 from scikitplot.metrics import plot_roc_curve
 from sklearn.metrics import roc_auc_score,roc_curve
 from sklearn.externals import joblib
+import os
+from datetime import datetime
+run_day=datetime.now().strftime('%Y%m%d')
+save_path="/home/heqt/tencent/"+run_day+"/"
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
 
 hive_engine = create_engine('hive://heqt@192.168.254.107:10000',
                         connect_args={'auth':'KERBEROS','kerberos_service_name':'hive',
@@ -26,11 +32,20 @@ data_x.fillna('-1',inplace=True)
 one_hot_feature=['lbs','age','carrier','consumptionability','education','gender','house','os','ct','marriagestatus','advertiserid','campaignid', 'creativeid',
        'adcategoryid', 'creativesize','productid', 'producttype']
 vector_feature=['appidaction','appidinstall','interest1','interest2','interest3','interest4','interest5','kw1','kw2','kw3','topic1','topic2','topic3']
+df_feature_map=pd.DataFrame()
+LE=LabelEncoder()
 for feature in one_hot_feature:
     try:
-        data_x[feature]=LabelEncoder().fit_transform(data_x[feature].map(np.int))
+        data_x[feature]=LE.fit_transform(data_x[feature].map(np.int))
+
     except:
-        data_x[feature]=LabelEncoder().fit_transform(data_x[feature])
+        data_x[feature]=LE.fit_transform(data_x[feature])
+    #feature important mapping
+    finally:
+        df_tmp=pd.DataFrame(LE.classes_,columns=['val'])
+        df_tmp['feature']='%s' %feature
+        df_feature_map=pd.concat([df_feature_map,df_tmp])
+
 print 'LabelEncoder finish'
 
 data_fit=data_x[data_x.label!=-1]
@@ -52,6 +67,7 @@ for feature in one_hot_feature:
     data_x_valid=sparse.hstack((data_x_valid,valid_a))
     data_x_test=sparse.hstack((data_x_test,test_a))
 print 'one_hot finish'
+#CVec=CountVectorizer(analyzer='word',token_pattern=r'(?u)\b\w+\b',tokenizer =lambda x: x.split(' '))
 CVec=CountVectorizer()
 for feature in vector_feature:
     CVec.fit(data_x[feature])
@@ -61,17 +77,22 @@ for feature in vector_feature:
     data_x_train=sparse.hstack((data_x_train,train_a))
     data_x_valid=sparse.hstack((data_x_valid,valid_a))
     data_x_test=sparse.hstack((data_x_test,test_a))
+    df_tmp=pd.DataFrame(CVec.get_feature_names(),columns=['val'])
+    #feature important mapping
+    df_tmp['feature']='%s' %feature
+    df_feature_map=pd.concat([df_feature_map,df_tmp])
 print ' countvec finish'
+df_feature_map.to_csv(save_path+"feature_important_mapping.csv")
 
-sparse.save_npz("/home/heqt/tencent/data_x_train.npz",data_x_train)
-y_train.to_csv("/home/heqt/tencent/data_y_train.csv",index=None)
+sparse.save_npz(save_path+"data_x_train.npz",data_x_train)
+y_train.to_csv(save_path+"data_y_train.csv",index=None)
 
-sparse.save_npz("/home/heqt/tencent/data_x_valid.npz",data_x_valid)
-y_valid.to_csv("/home/heqt/tencent/data_y_valid.csv",index=None)
+sparse.save_npz(save_path+"data_x_valid.npz",data_x_valid)
+y_valid.to_csv(save_path+"data_y_valid.csv",index=None)
 
-sparse.save_npz("/home/heqt/tencent/data_x_test.npz",data_x_test)
+sparse.save_npz(save_path+"data_x_test.npz",data_x_test)
 result=data_test[['aid','uid']]
-result.to_csv("/home/heqt/tencent/result.csv",index=None)
+result.to_csv(save_path+"result.csv",index=None)
 
 
 
@@ -111,14 +132,18 @@ y_pre_SGDLR=SGDLR_clf.predict(data_x_test)
 roc_auc_score(y_test,y_pre_SGDLR)
 
 #lightgbm
-eval_list=[(data_x_train,y_train),(data_x_test,y_test)]
+eval_list=[(data_x_train,y_train),(data_x_valid,y_valid)]
 
 gbm_clf = lgb.LGBMClassifier(
         boosting_type='gbdt', num_leaves=31, reg_alpha=0.0, reg_lambda=1,
-        max_depth=-1, n_estimators=500, objective='binary',
+        max_depth=-1, n_estimators=1000, objective='binary',
         subsample=0.7, colsample_bytree=0.7, subsample_freq=1,
         learning_rate=0.02, min_child_weight=50,random_state=20183,n_jobs=7,tree_learner='feature')
 
 gbm_clf.fit(data_x_train,y_train,eval_set=eval_list,eval_metric ='auc',early_stopping_rounds =100)
 joblib.dump(gbm_clf, '/home/heqt/jupyter_project/model/gbm_clf_2.pkl')
-
+pre_gbm=gbm_clf.predict_proba(data_x_test)
+result=data_test[['aid','uid']]
+result['score']=pre_gbm[:,1]
+result['score']=result['score'].apply(lambda x : '{:.8f}'.format(x))
+result.to_csv('submission.csv',index=None)
