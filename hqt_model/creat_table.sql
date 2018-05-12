@@ -158,7 +158,7 @@ as
 select aid,uid, 
 case when label=-1 then 0 else label end as label,
 case when age is null then '-1' else age end as age,
-case when gender is null then '-1' else gender end,
+case when gender is null then '-1' else gender end as gender,
 case when marriagestatus is null then '-1' else marriagestatus end as marriagestatus,
 case when education is null then '-1' else education end as education,
 case when consumptionability is null then '-1' else consumptionability end as consumptionability,
@@ -182,3 +182,33 @@ case when carrier is null then '-1' else carrier end as carrier,
 case when house is null then '-1' else house end as house,
 advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype
 from tmp.hqt_data 
+
+
+create table if not exists tmp.hqt_train_us_ad_pnull
+as
+select aid,uid,label,
+case when age is null then '-1' else age end as age,
+case when gender is null then '-1' else gender end as gender,
+case when marriagestatus is null then '-1' else marriagestatus end as marriagestatus,
+case when education is null then '-1' else education end as education,
+case when consumptionability is null then '-1' else consumptionability end as consumptionability,
+case when lbs is null then '-1' else lbs end as lbs ,
+case when interest1 is null then '-1' else interest1 end as interest1,
+case when interest2 is null then '-1' else interest2 end as interest2,
+case when interest3 is null then '-1' else interest3 end as interest3,
+case when interest4 is null then '-1' else interest4 end as interest4,
+case when interest5 is null then '-1' else interest5 end as interest5,
+case when kw1 is null then '-1' else kw1 end as kw1,
+case when kw2 is null then '-1' else kw2 end as kw2,
+case when kw3 is null then '-1' else kw3 end as kw3,
+case when topic1 is null then '-1' else topic1 end as topic1,
+case when topic2 is null then '-1' else topic2 end as topic2,
+case when topic3 is null then '-1' else topic3 end as topic3,
+case when appidinstall is null then '-1' else appidinstall end as appidinstall,
+case when appidaction is null then '-1' else appidaction end as appidaction,
+case when ct is null then '-1' else ct end as ct,
+case when os is null then '-1' else os end as os,
+case when carrier is null then '-1' else carrier end as carrier,
+case when house is null then '-1' else house end as house,
+advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype
+from tmp.hqt_train_us_ad 

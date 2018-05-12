@@ -313,31 +313,391 @@ joblib.dump(gbm_clf, '/home/heqt/jupyter_project/model/gbm_clf_cnt_80W.pkl')
 
 #交叉类特征
 
-#house特征的-1取值情况影响不大
+#house特征的-1取值情况影响不大,"os","ct","marriagestatus"影响不大
+#feature_important:580,1920,1165,1305,1715,0,0,0,435
 corr_feature=["lbs","age","carrier","education","gender","os","ct","marriagestatus","house"]
 
 for feature in corr_feature:
     corr_feature_path='/home/heqt/tencent/corr_feature/'+str(feature)+'_corr_aid.csv'
     df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[feature,'aid','label','feacnt','cnt','corr_ctr'])
     df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
-    print df_cor_fea.shape
+    print "df_cor_fea -----> shape",df_cor_fea.shape
     print df_cor_fea.head(1)
     df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
     train_a=pd.merge(x_train,df_cor_fea,how='left',on=[feature,'aid'])['corr_ctr']
     valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[feature,'aid'])['corr_ctr']
+    print "train_a after shape -------->",train_a.shape
+    print train_a.head(1)
+    train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+    valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+    data_x_train=sparse.hstack((data_x_train,train_a))
+    data_x_valid=sparse.hstack((data_x_valid,valid_a))
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #feature important mapping
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
+    print feature
+    print "--------------------"
+#统计兴趣的特征,影响不大
+intersec_feature=["interest1","interest2","interest3","interest4","interest5"]
+for feature in intersec_feature:
+
+    #intersec_feature_path='/home/heqt/tencent/countvec/interest/'+str(feature)+'_count.csv'
+    #df_cor_fea=pd.read_csv(intersec_feature_path,header=None,names=['uid',feature,'cnt'])
+    #df_cor_fea[feature]=df_cor_fea[feature].map(str)
+    #df_cor_fea['cnt']=df_cor_fea['cnt'].map(np.float)
+    #print df_cor_fea.shape
+    #print df_cor_fea.head(1)
+    train_a=x_train[feature].map(count_interest)
+    valid_a=valid_a[feature].map(count_interest)
     print train_a.shape
     print train_a.head(1)
     train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
     valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
     data_x_train=sparse.hstack((data_x_train,train_a))
     data_x_valid=sparse.hstack((data_x_valid,valid_a))
-    df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
     #feature important mapping
-    df_tmp['feature']='%s' %feature
-    df_feature_map=pd.concat([df_feature_map,df_tmp])
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
     print feature
+#统计兴趣与广告的交叉特征：1206, 1493,  627,  579, 1324
+intersec_feature=["interest1","interest2","interest3","interest4","interest5"]
+for feature in intersec_feature:
+    intersec_count_path='/home/heqt/tencent/countvec/interest/'+str(feature)+'_count.csv'
+    intersec_feature_path='/home/heqt/tencent/corr_feature/interst/'+str(feature)+'_corr_aid.csv'
+    df_cnt_fea=pd.read_csv(intersec_count_path,header=None,names=['uid',feature,feature+'cnt'])
+    print 'x_train ----> shape',x_train.shape
+    x_train=pd.merge(x_train,df_cnt_fea,how='left',on=['uid',feature])
+    x_valid=pd.merge(x_valid,df_cnt_fea,how='left',on=['uid',feature])
+    print 'x_train after merge ----> shape',x_train.shape
+    print 'x_valid after merge ----> shape',x_valid.shape
+    df_cor_fea=pd.read_csv(intersec_feature_path,header=None,names=[feature+'cnt','aid','label','feacnt','to_talcnt','corr_ctr'])
+    df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+    df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','to_talcnt'],axis=1)
+    print df_cor_fea.shape
+    print df_cor_fea.head(1)
+    train_a=pd.merge(x_train,df_cor_fea,how='left',on=[feature+'cnt','aid'])['corr_ctr']
+    valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[feature+'cnt','aid'])['corr_ctr']
+    print train_a.shape
+    print train_a.head(1)
+    train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+    valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+    data_x_train=sparse.hstack((data_x_train,train_a))
+    data_x_valid=sparse.hstack((data_x_valid,valid_a))
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #feature important mapping
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
+    print feature
+    print '-----------------------------'
+#gender交其他特征, [4,    1,    0,  258,  120,    0] :feature important
+var_feature='gender'
+corr_feature=["advertiserId","campaignId","creativeSize","adCategoryId","productId","productType"]
+for feature in corr_feature:
+    corr_feature_path="/home/heqt/tencent/corr_feature/"+var_feature+"/"+var_feature+"_corr_"+str(feature)+".csv"
+    df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[var_feature,feature.lower(),'label','feacnt','cnt','corr_ctr'])
+    df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+    print "df_cor_fea ------>shape",df_cor_fea.shape
+    print df_cor_fea.head(1)
+    df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+    train_a=pd.merge(x_train,df_cor_fea,how='left',on=[var_feature,feature.lower()])['corr_ctr']
+    valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[var_feature,feature.lower()])['corr_ctr']
+    print "train_a ---> shape",train_a.shape
+    print train_a.head(1)
+    train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+    valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+    data_x_train=sparse.hstack((data_x_train,train_a))
+    data_x_valid=sparse.hstack((data_x_valid,valid_a))
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #feature important mapping
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
+    print feature
+    print "-----------------------"
+#age 交其他广告特征 7,    0,    0,  280,207, 0
+var_feature='age'
+corr_feature=["advertiserId","campaignId","creativeSize","adCategoryId","productId","productType"]
+for feature in corr_feature:
+    corr_feature_path="/home/heqt/tencent/corr_feature/"+var_feature+"/"+var_feature+"_corr_"+str(feature)+".csv"
+    df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[var_feature,feature.lower(),'label','feacnt','cnt','corr_ctr'])
+    df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+    print "df_cor_fea ------>shape",df_cor_fea.shape
+    print df_cor_fea.head(1)
+    df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+    train_a=pd.merge(x_train,df_cor_fea,how='left',on=[var_feature,feature.lower()])['corr_ctr']
+    valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[var_feature,feature.lower()])['corr_ctr']
+    print "train_a ---> shape",train_a.shape
+    print train_a.head(1)
+    train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+    valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+    data_x_train=sparse.hstack((data_x_train,train_a))
+    data_x_valid=sparse.hstack((data_x_valid,valid_a))
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #feature important mapping
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
+    print feature
+    print "-----------------------"
+#其他特征与广告特征交叉,与上面一样，只有"adCategoryId","productId"比较显著,训练模型时不要"lbs","carrier","education","os","ct","marriagestatus","house"
+var_features=["gender","age"]
+for var_feature in var_features:
+    corr_feature=["advertiserId","campaignId","creativeSize","adCategoryId","productId","productType"]
+    for feature in corr_feature:
+        corr_feature_path="/home/heqt/tencent/corr_feature/"+var_feature+"/"+var_feature+"_corr_"+str(feature)+".csv"
+        df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[var_feature,feature.lower(),'label','feacnt','cnt','corr_ctr'])
+        df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+        print "df_cor_fea ------>shape",df_cor_fea.shape
+        print df_cor_fea.head(1)
+        df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+        train_a=pd.merge(x_train,df_cor_fea,how='left',on=[var_feature,feature.lower()])['corr_ctr']
+        valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[var_feature,feature.lower()])['corr_ctr']
+        print "train_a ---> shape",train_a.shape
+        print train_a.head(1)
+        train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+        valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+        data_x_train=sparse.hstack((data_x_train,train_a))
+        data_x_valid=sparse.hstack((data_x_valid,valid_a))
+        #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+        #feature important mapping
+        #df_tmp['feature']='%s' %feature
+        #df_feature_map=pd.concat([df_feature_map,df_tmp])
+        print feature
+        print "-----------------------"
 
+#性别*(年龄/学历/消费能力/lbs/兴趣/移动营运商/房子)
+source_feature=["gender"]
+corr_feature=["lbs","age","carrier","education","consumptionability","house","interest1","interest2","interest3","interest4","interest5"]
+for source in source_feature:
+    for feature in corr_feature:
+        corr_feature_path='/home/heqt/tencent/3corr_feature/'+str(source)+"_"+str(feature)+'_corr_aid.csv'
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature+"cnt",'aid','label','feacnt','cnt','corr_ctr'])
+        else:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature,'aid','label','feacnt','cnt','corr_ctr'])
+        df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+        print "df_cor_fea -----> shape",df_cor_fea.shape
+        print df_cor_fea.head(1)
+        df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            print "excute interest"
+        else:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+        print "train_a after shape -------->",train_a.shape
+        print train_a.head(1)
+        train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+        valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+        data_x_train=sparse.hstack((data_x_train,train_a))
+        data_x_valid=sparse.hstack((data_x_valid,valid_a))
+        #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+        #feature important mapping
+        #df_tmp['feature']='%s' %feature
+        #df_feature_map=pd.concat([df_feature_map,df_tmp])
+        print feature
+        print "--------------------"
+#年龄*(学历/消费能力/lbs/兴趣/移动营运商/房子)       
+source_feature=["age"]
+corr_feature=["lbs","carrier","education","consumptionability","house","interest1","interest2","interest3","interest4","interest5"]
+for source in source_feature:
+    for feature in corr_feature:
+        corr_feature_path='/home/heqt/tencent/3corr_feature/'+str(source)+"_"+str(feature)+'_corr_aid.csv'
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature+"cnt",'aid','label','feacnt','cnt','corr_ctr'])
+        else:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature,'aid','label','feacnt','cnt','corr_ctr'])
+        df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+        print "df_cor_fea -----> shape",df_cor_fea.shape
+        print df_cor_fea.head(1)
+        df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            print "excute interest"
+        else:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+        print "train_a after shape -------->",train_a.shape
+        print train_a.head(1)
+        train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+        valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+        data_x_train=sparse.hstack((data_x_train,train_a))
+        data_x_valid=sparse.hstack((data_x_valid,valid_a))
+        #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+        #feature important mapping
+        #df_tmp['feature']='%s' %feature
+        #df_feature_map=pd.concat([df_feature_map,df_tmp])
+        print feature
+        print "--------------------"
+#lbs X(学历/消费能力/兴趣/移动营运商/房子)
+source_feature=["lbs"]
+corr_feature=["carrier","education","consumptionability","house","interest1","interest2","interest3","interest4","interest5"]
+for source in source_feature:
+    for feature in corr_feature:
+        corr_feature_path='/home/heqt/tencent/3corr_feature/'+str(source)+"_"+str(feature)+'_corr_aid.csv'
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature+"cnt",'aid','label','feacnt','cnt','corr_ctr'])
+        else:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature,'aid','label','feacnt','cnt','corr_ctr'])
+        df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+        print "df_cor_fea -----> shape",df_cor_fea.shape
+        print df_cor_fea.head(1)
+        df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            print "excute interest"
+        else:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+        print "train_a after shape -------->",train_a.shape
+        print train_a.head(1)
+        train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+        valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+        data_x_train=sparse.hstack((data_x_train,train_a))
+        data_x_valid=sparse.hstack((data_x_valid,valid_a))
+        #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+        #feature important mapping
+        #df_tmp['feature']='%s' %feature
+        #df_feature_map=pd.concat([df_feature_map,df_tmp])
+        print feature
+        print "--------------------"
+#移动营运商 X(学历/消费能力/兴趣/房子)
+source_feature=["carrier"]
+corr_feature=["education","consumptionability","house","interest1","interest2","interest3","interest4","interest5"]
+for source in source_feature:
+    for feature in corr_feature:
+        corr_feature_path='/home/heqt/tencent/3corr_feature/'+str(source)+"_"+str(feature)+'_corr_aid.csv'
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature+"cnt",'aid','label','feacnt','cnt','corr_ctr'])
+        else:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature,'aid','label','feacnt','cnt','corr_ctr'])
+        df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+        print "df_cor_fea -----> shape",df_cor_fea.shape
+        print df_cor_fea.head(1)
+        df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            print "excute interest"
+        else:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+        print "train_a after shape -------->",train_a.shape
+        print train_a.head(1)
+        train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+        valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+        data_x_train=sparse.hstack((data_x_train,train_a))
+        data_x_valid=sparse.hstack((data_x_valid,valid_a))
+        #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+        #feature important mapping
+        #df_tmp['feature']='%s' %feature
+        #df_feature_map=pd.concat([df_feature_map,df_tmp])
+        print feature
+        print "--------------------"
+#消费能力 X(学历/兴趣/房子)
+source_feature=["consumptionability"]
+corr_feature=["education","house","interest1","interest2","interest3","interest4","interest5"]
+for source in source_feature:
+    for feature in corr_feature:
+        corr_feature_path='/home/heqt/tencent/3corr_feature/'+str(source)+"_"+str(feature)+'_corr_aid.csv'
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature+"cnt",'aid','label','feacnt','cnt','corr_ctr'])
+        else:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature,'aid','label','feacnt','cnt','corr_ctr'])
+        df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+        print "df_cor_fea -----> shape",df_cor_fea.shape
+        print df_cor_fea.head(1)
+        df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            print "excute interest"
+        else:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+        print "train_a after shape -------->",train_a.shape
+        print train_a.head(1)
+        train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+        valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+        data_x_train=sparse.hstack((data_x_train,train_a))
+        data_x_valid=sparse.hstack((data_x_valid,valid_a))
+        #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+        #feature important mapping
+        #df_tmp['feature']='%s' %feature
+        #df_feature_map=pd.concat([df_feature_map,df_tmp])
+        print feature
+        print "--------------------"
 
+#学历 X(兴趣/房子)
+source_feature=["education"]
+corr_feature=["house","interest1","interest2","interest3","interest4","interest5"]
+for source in source_feature:
+    for feature in corr_feature:
+        corr_feature_path='/home/heqt/tencent/3corr_feature/'+str(source)+"_"+str(feature)+'_corr_aid.csv'
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature+"cnt",'aid','label','feacnt','cnt','corr_ctr'])
+        else:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature,'aid','label','feacnt','cnt','corr_ctr'])
+        df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+        print "df_cor_fea -----> shape",df_cor_fea.shape
+        print df_cor_fea.head(1)
+        df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            print "excute interest"
+        else:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+        print "train_a after shape -------->",train_a.shape
+        print train_a.head(1)
+        train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+        valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+        data_x_train=sparse.hstack((data_x_train,train_a))
+        data_x_valid=sparse.hstack((data_x_valid,valid_a))
+        #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+        #feature important mapping
+        #df_tmp['feature']='%s' %feature
+        #df_feature_map=pd.concat([df_feature_map,df_tmp])
+        print feature
+        print "--------------------"
+
+#房子 X(兴趣)
+source_feature=["house"]
+corr_feature=["interest1","interest2","interest3","interest4","interest5"]
+for source in source_feature:
+    for feature in corr_feature:
+        corr_feature_path='/home/heqt/tencent/3corr_feature/'+str(source)+"_"+str(feature)+'_corr_aid.csv'
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature+"cnt",'aid','label','feacnt','cnt','corr_ctr'])
+        else:
+            df_cor_fea=pd.read_csv(corr_feature_path,header=None,names=[source,feature,'aid','label','feacnt','cnt','corr_ctr'])
+        df_cor_fea['corr_ctr']=df_cor_fea['corr_ctr']*100.0
+        print "df_cor_fea -----> shape",df_cor_fea.shape
+        print df_cor_fea.head(1)
+        df_cor_fea=df_cor_fea.drop(labels=['label','feacnt','cnt'],axis=1)
+        if feature in ["interest1","interest2","interest3","interest4","interest5"]:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature+"cnt",'aid'])['corr_ctr']
+            print "excute interest"
+        else:
+            train_a=pd.merge(x_train,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+            valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=[source,feature,'aid'])['corr_ctr']
+        print "train_a after shape -------->",train_a.shape
+        print train_a.head(1)
+        train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+        valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+        data_x_train=sparse.hstack((data_x_train,train_a))
+        data_x_valid=sparse.hstack((data_x_valid,valid_a))
+        #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+        #feature important mapping
+        #df_tmp['feature']='%s' %feature
+        #df_feature_map=pd.concat([df_feature_map,df_tmp])
+        print feature
+        print "--------------------"
 
 
 df_feature_map.to_csv(save_path+"feature_important_mapping_cut_corr.csv")

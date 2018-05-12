@@ -86,12 +86,15 @@ print ' countvec finish'
 df_feature_map.to_csv(save_path+"feature_important_mapping.csv")
 
 sparse.save_npz(save_path+"data_x_train.npz",data_x_train)
+x_train.to_csv(save_path+"x_train.csv",index=None)
 y_train.to_csv(save_path+"data_y_train.csv",index=None)
 
 sparse.save_npz(save_path+"data_x_valid.npz",data_x_valid)
+x_valid.to_csv(save_path+"x_valid.csv",index=None)
 y_valid.to_csv(save_path+"data_y_valid.csv",index=None)
 
 sparse.save_npz(save_path+"data_x_test.npz",data_x_test)
+data_test.to_csv(save_path+"data_test.csv",index=None)
 result=data_test[['aid','uid']]
 result.to_csv(save_path+"result.csv",index=None)
 
