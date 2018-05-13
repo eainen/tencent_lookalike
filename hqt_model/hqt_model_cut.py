@@ -24,7 +24,7 @@ def sub_to_other(x):
             x_split[x_split.index(str(target))]='other'  
     return ' '.join(x_split)
 
-def count_interest(x):
+def count_value(x):
     if x=='-1' or x==-1:
         return int(x)
     else:
@@ -180,9 +180,9 @@ for feature in intersec_feature:
     #df_cor_fea['cnt']=df_cor_fea['cnt'].map(np.float)
     #print df_cor_fea.shape
     #print df_cor_fea.head(1)
-    train_a=x_train[feature].map(count_interest)
-    valid_a=valid_a[feature].map(count_interest)
-    test_a=data_test[feature].map(count_interest)
+    train_a=x_train[feature].map(count_value)
+    valid_a=valid_a[feature].map(count_value)
+    test_a=data_test[feature].map(count_value)
     print train_a.shape
     print train_a.head(1)
     train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
@@ -203,9 +203,9 @@ for feature in intersec_feature:
     intersec_feature_path='/home/heqt/tencent/corr_feature/interst/'+str(feature)+'_corr_aid.csv'
     #df_cnt_fea=pd.read_csv(intersec_count_path,header=None,names=['uid',feature,feature+'cnt'])
     print 'x_train ----> shape',x_train.shape
-    x_train[feature+'cnt']=x_train[feature].map(count_interest)
-    x_valid[feature+'cnt']=x_valid[feature].map(count_interest)
-    data_test[feature+'cnt']=data_test[feature].map(count_interest)
+    x_train[feature+'cnt']=x_train[feature].map(count_value)
+    x_valid[feature+'cnt']=x_valid[feature].map(count_value)
+    data_test[feature+'cnt']=data_test[feature].map(count_value)
     #x_train=pd.merge(x_train,df_cnt_fea,how='left',on=['uid',feature])
     #x_valid=pd.merge(x_valid,df_cnt_fea,how='left',on=['uid',feature])
     #data_test=pd.merge(data_test,df_cnt_fea,how='left',on=['uid',feature])
@@ -377,9 +377,10 @@ plt.show()
 #sklearn 中的随机梯度下降  
 
 SGDLR_clf=SGDClassifier(loss='log', penalty='l1', alpha=1.0, l1_ratio=0.15, 
-     n_jobs=3, random_state=20150511,learning_rate='optimal',class_weight='balanced',n_jobs=15)
+     random_state=20150511,learning_rate='optimal',class_weight='balanced',n_jobs=15)
 SGDLR_clf.fit(data_x_train,y_train)
-joblib.dump(gbm_clf, '/home/heqt/jupyter_project/model/SGDLR_clf.pkl')
+joblib.dump(gbm_clf, '/home/heqt/jupyter_project/model/feature_SGDLR_clf.pkl')
+
 y_pre_SGDLR=SGDLR_clf.predict(data_x_test)
 roc_auc_score(y_test,y_pre_SGDLR)
 

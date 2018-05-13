@@ -23,6 +23,7 @@ class HyperParam(object):
 
     def update_from_data_by_FPI(self, tries, success, iter_num, epsilon):
         '''estimate alpha, beta using fixed point iteration'''
+        #input np.array or Series
         for i in range(iter_num):
             new_alpha, new_beta = self.__fixed_point_iteration(tries, success, self.alpha, self.beta)
             if abs(new_alpha-self.alpha)<epsilon and abs(new_beta-self.beta)<epsilon:
@@ -35,34 +36,11 @@ class HyperParam(object):
         sumfenzialpha = 0.0
         sumfenzibeta = 0.0
         sumfenmu = 0.0
-        for i in range(len(tries)):
-            sumfenzialpha += (special.digamma(success[i]+alpha) - special.digamma(alpha))
-            sumfenzibeta += (special.digamma(tries[i]-success[i]+beta) - special.digamma(beta))
-            sumfenmu += (special.digamma(tries[i]+alpha+beta) - special.digamma(alpha+beta))
+        sumfenzialpha += (special.digamma(success+alpha) - special.digamma(alpha)).sum()
+        sumfenzibeta += (special.digamma(tries-success+beta) - special.digamma(beta)).sum()
+        sumfenmu = (special.digamma(tries+alpha+beta) - special.digamma(alpha+beta)).sum()
 
         return alpha*(sumfenzialpha/sumfenmu), beta*(sumfenzibeta/sumfenmu)
-
-    def update_from_data_by_moment(self, tries, success):
-        '''estimate alpha, beta using moment estimation'''
-        mean, var = self.__compute_moment(tries, success)
-        #print 'mean and variance: ', mean, var
-        #self.alpha = mean*(mean*(1-mean)/(var+0.000001)-1)
-        self.alpha = (mean+0.000001) * ((mean+0.000001) * (1.000001 - mean) / (var+0.000001) - 1)
-        #self.beta = (1-mean)*(mean*(1-mean)/(var+0.000001)-1)
-        self.beta = (1.000001 - mean) * ((mean+0.000001) * (1.000001 - mean) / (var+0.000001) - 1)
-
-    def __compute_moment(self, tries, success):
-        '''moment estimation'''
-        ctr_list = []
-        var = 0.0
-        for i in range(len(tries)):
-            ctr_list.append(float(success[i])/tries[i])
-        mean = sum(ctr_list)/len(ctr_list)
-        for ctr in ctr_list:
-            var += pow(ctr-mean, 2)
-
-        return mean, var/(len(ctr_list)-1)
-
 
 
 def test():
@@ -75,6 +53,3 @@ def test():
     hyper.update_from_data_by_FPI(I, C, 1000, 0.00000001)
     print hyper.alpha, hyper.beta
 
-    #--------estimate parameter using moment estimation--------
-    hyper.update_from_data_by_moment(I, C)
-    print hyper.alpha, hyper.beta

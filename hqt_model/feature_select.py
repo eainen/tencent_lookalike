@@ -12,6 +12,9 @@ from sklearn.externals import joblib
 import os
 from datetime import datetime
 import re
+from operator import sub,add
+import matplotlib.pyplot as plt
+from sklearn import grid_search
 
 def sub_to_other(x):
     x_split=x.split(" ")
@@ -21,6 +24,63 @@ def sub_to_other(x):
         for target in intersec:
             x_split[x_split.index(str(target))]='other'  
     return ' '.join(x_split)
+
+def plot_cv_train_auc_stdv(x,y):
+    plt.figure()
+    plt.title("AUC")
+    max_value=max(x)
+    max_index=x.index(max_value)
+    max_value=round(max_value,8)
+    print max_value
+    show_max=str(max_value)
+    mead_sub=map(sub,x,y)
+    mead_add=map(add,x,y)
+    plt.plot(x,'b--')
+    plt.plot(mead_add,'r--')
+    plt.plot(mead_sub,'r--')
+    plt.plot(max_index,max_value,'gs')
+    plt.annotate(show_max,xytext=(max_index,max_value),xy=(max_index,max_value))
+    plt.show()
+def plot_cv_valid_auc_stdv(x,y):
+    plt.figure()
+    plt.title("AUC")
+    max_value=max(x)
+    max_index=x.index(max_value)
+    max_value=round(max_value,8)
+    print max_value
+    show_max=str(max_value)
+    mead_sub=map(sub,x,y)
+    mead_add=map(add,x,y)
+    plt.plot(x,'b--')
+    plt.plot(mead_add,'r--')
+    plt.plot(mead_sub,'r--')
+    plt.plot(max_index,max_value,'gs')
+    plt.annotate(show_max,xytext=(max_index,max_value),xy=(max_index,max_value))
+    plt.show()
+def count_value(x):
+    if x=='-1' or x==-1:
+        return int(x)
+    else:
+        split_tmp=x.split(' ')
+        return len(split_tmp)
+
+def cv_valid():
+    global test_cv_valid
+    gbm_valid_data=lgb.Dataset(data_x_valid,y_valid.values.ravel())
+    test_cv_valid=lgb.cv(tree_paramas,gbm_valid_data,num_boost_round=1000,metrics='auc',seed=20180512，early_stopping_rounds=100)
+    x=test_cv_valid['auc-mean']
+    y=test_cv_valid['auc-stdv']
+    plot_cv_valid_auc_stdv(x,y)
+def cv_train():
+    global test_cv_train
+    gbm_train_data=lgb.Dataset(data_x_train,y_train.values.ravel())
+    test_cv_train=lgb.cv(tree_paramas,gbm_train_data,num_boost_round=1000,metrics='auc',seed=20180512,early_stopping_rounds=100)
+    x=test_cv_train['auc-mean']
+    y=test_cv_train['auc-stdv']
+    plot_cv_train_auc_stdv(x,y)
+
+def corr_2(x):
+    return str(x[0])+' '+str(x[1])
 
 run_day=datetime.now().strftime('%m%d%H%M%S')
 save_path="/home/heqt/tencent/"+run_day+"/"
@@ -348,8 +408,8 @@ for feature in intersec_feature:
     #df_cor_fea['cnt']=df_cor_fea['cnt'].map(np.float)
     #print df_cor_fea.shape
     #print df_cor_fea.head(1)
-    train_a=x_train[feature].map(count_interest)
-    valid_a=valid_a[feature].map(count_interest)
+    train_a=x_train[feature].map(count_value)
+    valid_a=x_valid[feature].map(count_value)
     print train_a.shape
     print train_a.head(1)
     train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
@@ -700,6 +760,168 @@ for source in source_feature:
         print "--------------------"
 
 
+#统计app个数
+
+app_feature=["appidinstall","appidaction"]
+for feature in app_feature:
+    #intersec_feature_path='/home/heqt/tencent/countvec/interest/'+str(feature)+'_count.csv'
+    #df_cor_fea=pd.read_csv(intersec_feature_path,header=None,names=['uid',feature,'cnt'])
+    #df_cor_fea[feature]=df_cor_fea[feature].map(str)
+    #df_cor_fea['cnt']=df_cor_fea['cnt'].map(np.float)
+    #print df_cor_fea.shape
+    #print df_cor_fea.head(1)
+    train_a=x_train[feature].map(count_value)
+    valid_a=x_valid[feature].map(count_value)
+    print train_a.shape
+    print train_a.head(1)
+    train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+    valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+    data_x_train=sparse.hstack((data_x_train,train_a))
+    data_x_valid=sparse.hstack((data_x_valid,valid_a))
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #feature important mapping
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
+    print feature
+#跑genderXage
+corr_feature=["lbs","age","carrier","education","gender","os","ct","marriagestatus","house"]
+for i in range(len(corr_feature)-1):
+    for j in range(i+1,len(corr_feature)):
+        var_name=corr_feature[i]+'X'+corr_feature[j]
+        print var_name
+        x_train[var_name]=x_train[[corr_feature[i],corr_feature[j]]].apply(corr_2,axis=1)
+        x_valid[var_name]=x_valid[[corr_feature[i],corr_feature[j]]].apply(corr_2,axis=1)
+        print x_train[var_name][0]
+        print x_valid[var_name][0]
+one_hot_feature=[]
+corr_feature=["lbs","age","carrier","education","gender","os","ct","marriagestatus","house"]
+for i in range(len(corr_feature)-1):
+    for j in range(1,len(corr_feature)):
+        var_name=corr_feature[i]+'X'+corr_feature[j]
+        one_hot_feature.append(var_name)
+x_train['qubie']=1
+x_valid['qubie']=0
+data_x=pd.concat([x_train,x_valid])
+LE=LabelEncoder()
+for feature in one_hot_feature:
+    try:
+        data_x[feature]=LE.fit_transform(data_x[feature].map(np.int))
+    except:
+        data_x[feature]=LE.fit_transform(data_x[feature])
+print "LabelEncoder finish"
+x_train=data_x[data_x.qubie==1]
+x_valid=data_x[data_x.qubie==0]
+data_x.pop('qubie'),x_train.pop('qubie'),x_valid.pop('qubie')
+
+
+OHE=OneHotEncoder()
+data_x_train_1=data_x_train.copy()
+data_x_valid_1=data_x_valid.copy()
+df_AUC=pd.DataFrame(columns=['var_name','AUC_0','AUC_1'])
+for feature in one_hot_feature:
+    OHE.fit(data_x[feature].values.reshape(-1,1))
+    train_a=OHE.transform(x_train[feature].values.reshape(-1,1))
+    valid_a=OHE.transform(x_valid[feature].values.reshape(-1,1))
+    print 'train_a ----> one hot--->shape',train_a.shape
+    data_x_train=sparse.hstack((data_x_train_1,train_a))
+    data_x_valid=sparse.hstack((data_x_valid_1,valid_a))
+    eval_list=[(data_x_train,y_train),(data_x_valid,y_valid)]
+    gbm_clf.fit(data_x_train,y_train,eval_set=eval_list,eval_metric ='auc',early_stopping_rounds =100)
+
+    df_tmp=pd.DataFrame([feature],columns=['var_name'])
+    df_tmp['AUC_0']=gbm_clf.best_score_["valid_0"]["auc"]
+    df_tmp['AUC_1']=gbm_clf.best_score_["valid_1"]["auc"]
+    df_AUC=pd.concat([df_AUC,df_tmp])
+    print "data_x_train ---->shape",data_x_train.shape
+    print feature
+    print "----------------"
+
+#单个兴趣与广告相交：分数没提高，但是重要性有943
+sigle_interest=['interest1']
+for feature in sigle_interest:
+    intersec_feature_path='/home/heqt/tencent/corr_feature/single_corr/interest/'+feature+'_single.csv'
+    df_cor_fea=pd.read_csv(intersec_feature_path,header=None,names=['uid','aid',feature+'ctr'])
+    print df_cor_fea.shape
+    print df_cor_fea.head(1)
+    train_a=pd.merge(x_train,df_cor_fea,how='left',on=['uid','aid'])[feature+'ctr']
+    valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=['uid','aid'])[feature+'ctr']
+    print 'train_a ---> shape',train_a.shape
+    print 'train_a --->head(1)',train_a.head(1)
+    train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+    valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+    data_x_train=sparse.hstack((data_x_train,train_a))
+    data_x_valid=sparse.hstack((data_x_valid,valid_a))
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #feature important mapping
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
+    print feature
+sigle_interest=['interest3','interest4','interest5']
+for feature in sigle_interest:
+    intersec_feature_path='/home/heqt/tencent/corr_feature/single_corr/'+feature+'_single.csv'
+    df_cor_fea=pd.read_csv(intersec_feature_path,header=None,names=['uid','aid',feature+'ctr'])
+    print df_cor_fea.shape
+    print df_cor_fea.head(1)
+    train_a=pd.merge(x_train,df_cor_fea,how='left',on=['uid','aid'])[feature+'ctr']
+    valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=['uid','aid'])[feature+'ctr']
+    print 'train_a ---> shape',train_a.shape
+    print 'train_a --->head(1)',train_a.head(1)
+    train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+    valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+    data_x_train=sparse.hstack((data_x_train,train_a))
+    data_x_valid=sparse.hstack((data_x_valid,valid_a))
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #feature important mapping
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
+    print feature
+
+#appidaction 尝试贝叶斯平滑：效果不是很大
+sigle_interest=['appidaction']
+for feature in sigle_interest:
+    intersec_feature_path='/home/heqt/tencent/corr_feature/single_corr/'+feature+'_single_smoot.csv'
+    df_cor_fea=pd.read_csv(intersec_feature_path,header=None,names=['uid','aid',feature+'single',feature+'dianji',feature+'baoguang'])
+    print df_cor_fea.shape
+    print df_cor_fea.head(1)
+    hyper = HyperParam(1, 1)
+    hyper.update_from_data_by_FPI(df_cor_fea[feature+'baoguang'], df_cor_fea[feature+'dianji'], 1000, 0.00000001)
+    print "alpha and beta",hyper.alpha, hyper.beta
+    df_cor_fea[feature+'dianji']=df_cor_fea[feature+'dianji'].map(lambda x: x+hyper.alpha)
+    df_cor_fea[feature+'baoguang']=df_cor_fea[feature+'baoguang'].map(lambda x: x+hyper.alpha+hyper.beta) 
+    df_cor_fea[feature+'ctr']=df_cor_fea[[feature+'dianji',feature+'baoguang']].apply(lambda x:1-x[0]/x[1],axis=1)
+    df_cor_fea_2=df_cor_fea.groupby(by=['uid','aid'])[feature+'ctr'].apply(lambda x:np.exp(sum(np.log(x))))
+    df_cor_fea=df_cor_fea_2.reset_index()
+    train_a=pd.merge(x_train,df_cor_fea,how='left',on=['uid','aid'])[feature+'ctr']
+    valid_a=pd.merge(x_valid,df_cor_fea,how='left',on=['uid','aid'])[feature+'ctr']
+    print 'train_a ---> shape',train_a.shape
+    print 'train_a --->head(1)',train_a.head(1)
+    train_a=sparse.csr_matrix(train_a.values.reshape(-1,1))
+    valid_a=sparse.csr_matrix(valid_a.values.reshape(-1,1))
+    data_x_train=sparse.hstack((data_x_train,train_a))
+    data_x_valid=sparse.hstack((data_x_valid,valid_a))
+    #df_tmp=pd.DataFrame(['ctr'],columns=['val'])
+    #feature important mapping
+    #df_tmp['feature']='%s' %feature
+    #df_feature_map=pd.concat([df_feature_map,df_tmp])
+    print feature
+#产生树的索引
+train_tree_index=gbm_clf_2.apply(data_x_train_1)
+valid_tree_index=gbm_clf_2.apply(data_x_valid_1)
+tree_index=np.concatenate([train_tree_index,valid_tree_index])
+OHE=OneHotEncoder()
+data_x_train_2=np.empty(shape=(0,31))
+data_x_valid_2=np.empty(shape=(0,31))
+for index in range(tree_index.shape[1]):
+    OHE.fit(tree_index[:,index].reshape(-1,1))
+    train_a=OHE.transform(train_tree_index[:,index].reshape(-1,1))
+    valid_a=OHE.transform(valid_tree_index[:,index].reshape(-1,1))
+    if index %50==0:
+        print index
+        print 'train_a ----> one hot--->shape',train_a.shape
+    data_x_train_2=sparse.hstack((data_x_train_2,train_a))
+    data_x_valid_2=sparse.hstack((data_x_valid_2,valid_a))
+
+
 df_feature_map.to_csv(save_path+"feature_important_mapping_cut_corr.csv")
 sparse.save_npz(save_path+"data_x_train_cut_corr.npz",data_x_train)
 sparse.save_npz(save_path+"data_x_valid_cut_corr.npz",data_x_valid)
@@ -714,3 +936,11 @@ gbm_clf = lgb.LGBMClassifier(
 
 gbm_clf.fit(data_x_train,y_train,eval_set=eval_list,eval_metric ='auc',early_stopping_rounds =100)
 joblib.dump(gbm_clf, '/home/heqt/jupyter_project/model/gbm_clf_cnt_80W_corr.pkl')
+
+
+SGDLR_clf=SGDClassifier(loss='log', penalty='l1', alpha=1.0, l1_ratio=0.15, 
+     random_state=20150511,learning_rate='optimal',n_jobs=15)
+
+
+SGDLR_clf.fit(data_x_train_LR,y_train)
+joblib.dump(gbm_clf, '/home/heqt/jupyter_project/model/feature_SGDLR_clf.pkl')
