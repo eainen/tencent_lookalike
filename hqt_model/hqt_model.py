@@ -22,12 +22,13 @@ hive_engine = create_engine('hive://heqt@192.168.254.107:10000',
                         'configuration':{'mapred.job.queue.name':  'root.anti_fraud'}})
 
 data_fit=pd.read_csv('/home/heqt/tencent/train_all.csv')
-data_test=pd.read_csv('/home/heqt/tencent/test1_all.csv')
+#data_test=pd.read_csv('/home/heqt/tencent/test1_all.csv')
+data_test=pd.read_csv('/home/heqt/tencent/test2_all.csv')
 data_fit.loc[data_fit['label']==-1,'label']=0
 data_test.insert(2,'label',-1)
 data_x=pd.concat([data_fit,data_test])
 data_x.fillna('-1',inplace=True)
-
+data_x=pd.to_csv('/home/heqt/tencent/data_all.csv',index=None)
 
 #fit_model
 one_hot_feature=['lbs','age','carrier','consumptionability','education','gender','house','os','ct','marriagestatus','advertiserid','campaignid', 'creativeid',

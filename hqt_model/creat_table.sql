@@ -22,6 +22,17 @@ stored as textfile;
 
 load data local inpath '/home/heqt/tencent/test1.csv' overwrite into table tmp.hqt_test1;
 
+create table if not exists tmp.hqt_test2
+(
+aid bigint,
+uid bigint
+)
+row format DELIMITED
+fields TERMINATED by ','
+stored as textfile;
+
+load data local inpath '/home/heqt/tencent/test2.csv' overwrite into table tmp.hqt_test2;
+
 create table if not exists tmp.hqt_adFeature
 (
 aid bigint,
@@ -130,6 +141,30 @@ on
 a1.aid=a3.aid
 
 
+
+create table if not exists tmp.hqt_test2_us_ad
+as
+select a2.*,a3.* from 
+tmp.hqt_test2 a1
+left join
+tmp.hqt_userFeature a2
+on 
+a1.uid=a2.uid
+left join 
+tmp.hqt_adFeature a3
+on
+a1.aid=a3.aid
+
+hive -S -e "
+select aid,uid,age,gender,marriagestatus,education,consumptionability,lbs,
+interest1,interest2,interest3,interest4,interest5,kw1,kw2,kw3,topic1,topic2,topic3,
+appidinstall,appidaction,ct,os,carrier,house,advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype
+from tmp.hqt_test2_us_ad
+" | grep -v "WARN" | sed 's/\t/,/g' > test2_all.csv
+
+sed -i "1iaid,uid,age,gender,marriagestatus,education,consumptionability,lbs,interest1,interest2,interest3,interest4,interest5,kw1,kw2,kw3,topic1,topic2,topic3,appidinstall,appidaction,ct,os,carrier,house,advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype" test2_all.csv 
+
+sed '2 ittt' -i a.txt
 ---creat table train puls test1
 create table if not exists tmp.hqt_data
 as
@@ -145,6 +180,22 @@ select aid,uid, -2 as label,age,gender,marriagestatus,education,consumptionabili
 interest1,interest2,interest3,interest4,interest5,kw1,kw2,kw3,topic1,topic2,topic3,
 appidinstall,appidaction,ct,os,carrier,house,advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype
 from tmp.hqt_test1_us_ad
+) a
+
+create table if not exists tmp.hqt_data_2
+as
+select  * 
+from
+(
+select aid,uid,label,age,gender,marriagestatus,education,consumptionability,lbs,
+interest1,interest2,interest3,interest4,interest5,kw1,kw2,kw3,topic1,topic2,topic3,
+appidinstall,appidaction,ct,os,carrier,house,advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype
+from tmp.hqt_train_us_ad 
+UNION  ALL 
+select aid,uid, -2 as label,age,gender,marriagestatus,education,consumptionability,lbs,
+interest1,interest2,interest3,interest4,interest5,kw1,kw2,kw3,topic1,topic2,topic3,
+appidinstall,appidaction,ct,os,carrier,house,advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype
+from tmp.hqt_test2_us_ad
 ) a
 
 
@@ -181,7 +232,7 @@ case when os is null then '-1' else os end as os,
 case when carrier is null then '-1' else carrier end as carrier,
 case when house is null then '-1' else house end as house,
 advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype
-from tmp.hqt_data 
+from tmp.hqt_data_2 
 
 
 create table if not exists tmp.hqt_train_us_ad_pnull
@@ -212,3 +263,47 @@ case when carrier is null then '-1' else carrier end as carrier,
 case when house is null then '-1' else house end as house,
 advertiserid,campaignid,creativeid,creativesize,adcategoryid,productid,producttype
 from tmp.hqt_train_us_ad 
+
+
+create table if not exists tmp.sigle_smoot(
+uid bigint,
+aid bigint,
+single_value bigint)
+partitioned by (factor_name string)
+stored as parquet
+
+
+CREATE table if not exists tmp.sigle_smoot_finish
+(single_value bigint,
+dianji DOUBLE,
+baoguang DOUBLE ,
+ctr DOUBLE)
+partitioned by (factor_name string)
+row format DELIMITED
+fields TERMINATED by ','
+stored as textfile;
+
+
+create table if not exists tmp.10corr
+(single_value string,
+aid bigint,
+dianji DOUBLE,
+baoguang DOUBLE ,
+ctr DOUBLE)
+partitioned by (factor_name string)
+row format DELIMITED
+fields TERMINATED by ','
+stored as textfile;
+
+
+
+create table if not exists tmp.clicl_ratio
+(single_value string,
+label bigint,
+dianji DOUBLE,
+baoguang DOUBLE ,
+ctr DOUBLE)
+partitioned by (factor_name string)
+row format DELIMITED
+fields TERMINATED by ','
+stored as textfile;
